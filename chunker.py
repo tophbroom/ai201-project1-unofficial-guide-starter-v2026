@@ -22,6 +22,7 @@ to it, write down what you saw, and move on. That's a real observation about
 your pipeline, not giving up.
 """
 
+import re
 from dataclasses import dataclass
 
 import config
@@ -80,24 +81,116 @@ def fallback_split(
     return chunks
 
 
+# Only "##" section headings are split points. A lone "#" is the document
+# title, handled separately, not a section of its own.
+_HEADING_RE = re.compile(r"^##\s+(.*)$", re.MULTILINE)
+
+# A section beyond this length is more than one thought stitched together, so
+# it gets split further instead of shipped as one chunk. Picked well above the
+# ~450-char sections this corpus actually has, so it only fires on an outlier.
+MAX_SECTION_SIZE = 1000
+
+
+def _split_into_sections(text: str) -> list[tuple[str, str]]:
+    """
+    Split one document's text on markdown '##' headings.
+
+    Returns a list of (heading, body) pairs. Anything before the first '##'
+    heading (the document's title / intro line) is kept as its own section
+    with an empty heading, so it isn't dropped.
+    """
+    matches = list(_HEADING_RE.finditer(text))
+    if not matches:
+        body = re.sub(r"^#\s+.*\n?", "", text).strip()
+        return [("", body)] if body else []
+
+    sections: list[tuple[str, str]] = []
+
+    intro = text[: matches[0].start()].strip()
+    # Drop the leading "# Title" line — the title is carried separately and
+    # would otherwise appear twice in the intro chunk.
+    intro = re.sub(r"^#\s+.*\n?", "", intro).strip()
+    if intro:
+        sections.append(("", intro))
+
+    for i, m in enumerate(matches):
+        heading = m.group(1).strip()
+        body_start = m.end()
+        body_end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+        body = text[body_start:body_end].strip()
+        if body:
+            sections.append((heading, body))
+
+    return sections
+
+
+def _split_long_section(body: str, max_size: int) -> list[str]:
+    """
+    Break an oversized section into paragraph-sized pieces, packing
+    consecutive paragraphs together up to max_size rather than cutting mid-
+    paragraph.
+    """
+    paragraphs = [p.strip() for p in body.split("\n\n") if p.strip()]
+    pieces: list[str] = []
+    current = ""
+    for para in paragraphs:
+        candidate = f"{current}\n\n{para}" if current else para
+        if len(candidate) > max_size and current:
+            pieces.append(current)
+            current = para
+        else:
+            current = candidate
+    if current:
+        pieces.append(current)
+    return pieces
+
+
 def split_documents(documents: list[Document]) -> list[Chunk]:
     """
-    Split documents into chunks. ⚠️ REPLACE THE BODY OF THIS IN MILESTONE 3.
+    Split documents into chunks along their markdown '##' section headings.
 
-    Right now it just calls the fallback. That is the plain, generic behaviour
-    the brief is talking about.
+    city_guides documents are already organised into short, self-contained
+    sections ("Getting there", "Eat and drink", "When to go", ...), each one
+    a single topic covered in a few sentences. Cutting at fixed character
+    counts (the fallback) slices straight through those sections instead of
+    respecting them, so this chunker treats each heading's section as one
+    chunk instead.
 
-    When you write your own strategy, set `produced_by` to
-    "chunker.py::split_documents" so your README's Sample Chunks section names
-    the right function. `app.py chunks` prints that string for you.
+    Each chunk is prefixed with the document title and its section heading
+    ("Brightwater — Getting there:") so it reads as a complete thought on its
+    own, without needing the surrounding chunks for context.
 
-    Things worth thinking about before you write any code:
-      - Are your documents short posts or long guides?
-      - Is the useful information in one sentence, or spread over a paragraph?
-      - Would splitting on paragraph breaks keep more thoughts intact than
-        splitting on a character count?
+    A section that runs unusually long (past MAX_SECTION_SIZE) is broken
+    further along paragraph breaks rather than kept as one oversized chunk.
     """
-    return fallback_split(documents)
+    chunks: list[Chunk] = []
+    for doc in documents:
+        title_match = re.match(r"^#\s+(.*)$", doc.text, re.MULTILINE)
+        title = title_match.group(1).strip() if title_match else doc.source
+
+        sections = _split_into_sections(doc.text)
+        index = 0
+        for heading, body in sections:
+            pieces = (
+                [body] if len(body) <= MAX_SECTION_SIZE
+                else _split_long_section(body, MAX_SECTION_SIZE)
+            )
+            for piece in pieces:
+                # The intro before the first "##" has no heading of its own;
+                # label it with just the title instead of "Title — :".
+                label = f"{title} — {heading}" if heading else title
+                prefix = f"{label}:\n\n"
+                chunks.append(
+                    Chunk(
+                        text=(prefix + piece).strip(),
+                        source=doc.source,
+                        index=index,
+                        produced_by="chunker.py::split_documents",
+                    )
+                )
+                index += 1
+
+    return chunks
 
 
 def describe(chunks: list[Chunk]) -> str:
