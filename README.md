@@ -289,6 +289,10 @@ The best eating is in the Northgate district, and kitchens serve until midnight 
 
      Milestone 3. -->
 
+**I missed nothing.** All five criteria were MET on all three runs, so there is nothing to diagnose.
+
+**My targets were too easy, criterion 4 most of all.** The target was 4 of 5 sampled chunks and my sample hit exactly 4, but checking all 94 chunks showed only one fails (`guide_accessibility.md#0`, a heading and an intro sentence with no fact, produced by `chunker.py::split_documents`). The real pass rate is about 99%, so an 80% target proved nothing. **I would tighten criterion 4 to at least 93 of all 94 chunks, checked across the whole corpus instead of a sample of five.**
+
 ## The Improvement
 
 **What I changed:**
