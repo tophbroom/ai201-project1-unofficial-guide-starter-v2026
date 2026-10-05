@@ -295,9 +295,9 @@ The best eating is in the Northgate district, and kitchens serve until midnight 
 
 ## The Improvement
 
-**What I changed:**
+**What I changed:** In `chunker.py::split_documents`, an intro (text before the first `##`) shorter than `MIN_INTRO_SIZE = 150` characters is now merged into the first `##` section instead of being its own chunk. Only `guide_accessibility.md` was affected: its 123-character intro folded into its "Straightforward" section, taking the corpus from 94 to 93 chunks. The other nine town intros are 187+ characters and state real facts, so they are unchanged. Nothing else was touched (threshold 0.6, top-k 5, prompt, and the per-town prefix are all as before).
 
-**Why I picked it:**
+**Why I picked it:** My Diagnoses section found exactly one defective chunk, `guide_accessibility.md#0` (a heading and an intro sentence with no fact), so I'm merging fact-free intros into the next section to fix that chunk and move criterion 4.
 
 <!-- Connect it to a specific diagnosis above in one sentence. If you can't,
      you picked a fix because it sounded impressive. -->
@@ -309,13 +309,19 @@ The best eating is in the Northgate district, and kitchens serve until midnight 
 
 | Criterion                              | Target | Run 1 | Run 2 | Run 3 | Verdict |
 | -------------------------------------- | ------ | ----- | ----- | ----- | ------- |
-| 1. Retrieved chunk contains the answer | 4 of 5 |       |       |       |         |
-| 2. Every answer names a source         | 5 of 5 |       |       |       |         |
-| 3. Gate stops out-of-corpus questions  | 4 of 5 |       |       |       |         |
-| 4.                                     |        |       |       |       |         |
-| 5.                                     |        |       |       |       |         |
+| 1. Retrieved chunk contains the answer | 4 of 5 | 5/5   | 5/5   | 5/5   | MET     |
+| 2. Every answer names a source         | 5 of 5 | 5/5   | 5/5   | 5/5   | MET     |
+| 3. Gate stops out-of-corpus questions  | 4 of 5 | 5/5   | 5/5   | 5/5   | MET     |
+| 4. Sampled chunks are self-contained   | 4 of 5 | 5/5   | 5/5   | 5/5   | MET     |
+| 5. Cited source supports the answer    | 4 of 5 | 5/5   | 5/5   | 5/5   | MET     |
+
+Source: `results/run_2026-10-05_0432_after.md`. Scored by hand as before. Criteria 3 and 4 are deterministic, so one number fills all three columns. Criterion 4 uses the same `random.seed(201)` sample; it now includes the merged chunk `guide_accessibility.md#0`, which holds facts and passes. The first attempt crashed on a Gemini `503`; this is from the retry.
+
+Only criterion 4 changed (4/5 → 5/5). Criteria 1, 2, 3 and 5 were 5/5 before and after, and the best retrieval distances for all five test questions are identical to four decimals (0.2073, 0.2778, 0.3692, 0.2147, 0.2123).
 
 **Did it help?**
+
+Yes, but narrowly. Criterion 4 went from 4/5 to 5/5, and across all chunks the one fact-free chunk is gone (93/94 → 93/93 pass). Retrieval distances didn't move, so the merge didn't disturb retrieval; the other four criteria were already at ceiling. Caveats: the sample-based result is partly luck of the seed (the full-corpus count is the real measure), and none of my test questions touches the accessibility guide, so the merged chunk's own retrieval is untested. I did not fix the Marchwood-vs-Brightwater hospital contradiction; that is a corpus issue, not a pipeline fault.
 
 <!-- Say plainly whether it did, and how you know. If it made things worse,
      say that — a change that backfired, honestly reported, earns full credit

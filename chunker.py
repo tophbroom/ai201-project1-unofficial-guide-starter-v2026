@@ -90,6 +90,12 @@ _HEADING_RE = re.compile(r"^##\s+(.*)$", re.MULTILINE)
 # ~450-char sections this corpus actually has, so it only fires on an outlier.
 MAX_SECTION_SIZE = 1000
 
+# An intro shorter than this is a framing sentence with no fact in it (the
+# accessibility guide's is 123 chars; every town intro is 187+ and states
+# real facts). It gets merged into the first "##" section instead of being
+# stranded as a chunk nobody could answer a question from.
+MIN_INTRO_SIZE = 150
+
 
 def _split_into_sections(text: str) -> list[tuple[str, str]]:
     """
@@ -169,6 +175,15 @@ def split_documents(documents: list[Document]) -> list[Chunk]:
         title = title_match.group(1).strip() if title_match else doc.source
 
         sections = _split_into_sections(doc.text)
+        # Fold a fact-free intro into the section after it.
+        if (
+            len(sections) > 1
+            and sections[0][0] == ""
+            and len(sections[0][1]) < MIN_INTRO_SIZE
+        ):
+            intro = sections[0][1]
+            heading, body = sections[1]
+            sections = [(heading, f"{intro}\n\n{body}")] + sections[2:]
         index = 0
         for heading, body in sections:
             pieces = (
