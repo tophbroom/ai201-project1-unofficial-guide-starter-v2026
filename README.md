@@ -263,10 +263,10 @@ The best eating is in the Northgate district, and kitchens serve until midnight 
 
 | #   | Criterion | Verdict | How I decided |
 | --- | --------- | ------- | ------------- |
-| 1   | Retrieved chunks contain the answer | MET | All five answers matched their `expects` value (Corry Lane, station, Tuesday, year, Northgate), and each cited file contains the passage. 5/5 on all three runs. Retrieval is deterministic, so the runs agree. |
+| 1   | Retrieved chunks contain the answer | MET | All five answers matched their `expects` value (Corry Lane, station, Tuesday, year, Northgate), and each cited file contains the passage. 5/5 on all three runs. Retrieval is deterministic, so the runs agree. Caveat: `expects` is a single word and Q2 (`station`), Q3 (`Tuesday`) and Q4 (`year`) each ask a two-part question, so I read the whole answer rather than trusting the keyword. Both halves were present every time (four-minute walk, 10 to 4, April–May and September–October). |
 | 2   | Every answer names a source | MET | All 15 answers (5 questions × 3 runs) name a `guide_*.md` file, though the format varies (bold, backticks, parentheses, "Source:"). |
 | 3   | Gate stops out-of-corpus questions | MET | Refused 5 of 5. Best distances ran 0.802–0.967, all above the 0.6 cutoff. In-corpus questions ran 0.207–0.369, so there is a clean gap. |
-| 4   | At least 4 of 5 sampled chunks are self-contained | MET (close) | 4 of 5 in my sample. `guide_accessibility.md#0` is a heading plus intro with no content. This is the closest call: it is exactly at target, and a different sample might give 3 of 5. |
+| 4   | At least 4 of 5 sampled chunks are self-contained | MET (close) | 4 of 5 in my sample. My rule: a chunk is self-contained if it holds at least one concrete fact someone could answer a question from, without the neighbouring chunks. `guide_accessibility.md#0` fails — a heading plus an intro sentence, no fact. It is exactly at target, so I checked all 94 chunks, not just the sample: it is the only chunk with no usable fact. Eleven others are short (under 200 characters) but each still holds a fact, so the full corpus looks closer to 93 of 94 than 4 of 5 and the sample was unlucky, not generous. |
 | 5   | Cited source supports the answer | MET | I checked each cited file for the claim. All five are supported. |
 
 ## Diagnoses
