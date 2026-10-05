@@ -184,15 +184,71 @@ I had Claude run `python app.py retrieve` on all five in-corpus test questions a
 
 | Criterion                              | Target | Run 1 | Run 2 | Run 3 | Verdict |
 | -------------------------------------- | ------ | ----- | ----- | ----- | ------- |
-| 1. Retrieved chunk contains the answer | 4 of 5 |       |       |       |         |
-| 2. Every answer names a source         | 5 of 5 |       |       |       |         |
-| 3. Gate stops out-of-corpus questions  | 4 of 5 |       |       |       |         |
-| 4.                                     |        |       |       |       |         |
-| 5.                                     |        |       |       |       |         |
+| 1. Retrieved chunk contains the answer | 4 of 5 | 5/5   | 5/5   | 5/5   | MET     |
+| 2. Every answer names a source         | 5 of 5 | 5/5   | 5/5   | 5/5   | MET     |
+| 3. Gate stops out-of-corpus questions  | 4 of 5 | 5/5   | 5/5   | 5/5   | MET     |
+| 4. Sampled chunks are self-contained   | 4 of 5 | 4/5   | 4/5   | 4/5   | MET     |
+| 5. Cited source supports the answer    | 4 of 5 | 5/5   | 5/5   | 5/5   | MET     |
 
-<!-- Underneath, paste the REAL output for each criterion from one of your
-     runs — the actual text your system produced, not a description of it.
-     Name the file and function that produced it. -->
+Source: `results/run_2026-10-05_0326_before.md`. Criteria 1, 2 and 5 were scored by hand
+because `scorer.py` doesn't exist. Criteria 3 and 4 are deterministic (the gate is a
+fixed cutoff, and the chunk sample is the same chunks every time), so one number fills all three columns.
+
+### Real output
+
+**Criterion 1 — retrieved chunks contain the answer.** Retrieval is `store.py::search`; the
+log is written by `run_eval.py::main`. Question 3, run 1:
+
+```
+Best distance: 0.3692 (passed the gate)
+Sources retrieved: guide_givens_mill.md
+The Givens Mill tearoom is open from 10 to 4 daily, and it is closed on Tuesdays (guide_givens_mill.md).
+```
+
+**Criterion 2 — every answer names a source.** Answers come from `generate.py`. Question 4, run 2:
+
+```
+The best months for birdwatching at Elder Ness are April to May and September to October. Accommodation for the migration seasons books up a year ahead.
+
+*(Source: guide_elder_ness.md)*
+```
+
+**Criterion 3 — gate stops out-of-corpus questions.** `run_eval.py::check_out_of_scope`, cutoff 0.6, refused 5 of 5:
+
+```
+| What is the capital of Mongolia? | 0.802 | refused |
+| How do I change the oil in a diesel engine? | 0.885 | refused |
+| Who won the 1994 World Cup? | 0.967 | refused |
+| What is the recommended dosage of ibuprofen for a headache? | 0.841 | refused |
+| How do I write a for loop in Rust? | 0.847 | refused |
+```
+
+**Criterion 4 — chunks are self-contained.** Chunks come from `chunker.py::split_documents`
+(94 chunks). I sampled 5 with `random.seed(201)`. Four stand on their own; one does not.
+Self-contained (`guide_kestrelford.md#3`, 261 chars):
+
+```
+Kestrelford — Eat and drink:
+
+Four pubs, two cafés, and a bakery that sells out by 11am. The pubs serve food between 12 and 2 and again between 6 and 8:30, and outside those windows there is nowhere to eat at all. The bakery is the reason most people come back.
+```
+
+Not self-contained (`guide_accessibility.md#0`, 173 chars) — a heading and one intro sentence, no content:
+
+```
+Getting around the region with limited mobility:
+
+An honest assessment rather than a promotional one. Some of these places are
+difficult and it is better to know in advance.
+```
+
+**Criterion 5 — cited source supports the answer.** Question 5, run 1, cites `guide_marchwood.md`. The
+supporting line in that file (line 15) reads: "The best eating is in the Northgate district… kitchens
+serve until 10:30pm, and until midnight on Fridays and Saturdays."
+
+```
+The best eating is in the Northgate district, and kitchens serve until midnight on Fridays and Saturdays (guide_marchwood.md).
+```
 
 ## Verdicts
 
@@ -207,11 +263,11 @@ I had Claude run `python app.py retrieve` on all five in-corpus test questions a
 
 | #   | Criterion | Verdict | How I decided |
 | --- | --------- | ------- | ------------- |
-| 1   |           |         |               |
-| 2   |           |         |               |
-| 3   |           |         |               |
-| 4   |           |         |               |
-| 5   |           |         |               |
+| 1   | Retrieved chunks contain the answer | MET | All five answers matched their `expects` value (Corry Lane, station, Tuesday, year, Northgate), and each cited file contains the passage. 5/5 on all three runs. Retrieval is deterministic, so the runs agree. |
+| 2   | Every answer names a source | MET | All 15 answers (5 questions × 3 runs) name a `guide_*.md` file, though the format varies (bold, backticks, parentheses, "Source:"). |
+| 3   | Gate stops out-of-corpus questions | MET | Refused 5 of 5. Best distances ran 0.802–0.967, all above the 0.6 cutoff. In-corpus questions ran 0.207–0.369, so there is a clean gap. |
+| 4   | At least 4 of 5 sampled chunks are self-contained | MET (close) | 4 of 5 in my sample. `guide_accessibility.md#0` is a heading plus intro with no content. This is the closest call: it is exactly at target, and a different sample might give 3 of 5. |
+| 5   | Cited source supports the answer | MET | I checked each cited file for the claim. All five are supported. |
 
 ## Diagnoses
 
