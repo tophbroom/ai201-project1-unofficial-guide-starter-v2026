@@ -1,6 +1,6 @@
 # The Unofficial Guide
 
-<!-- Replace this line with your name and which corpus you picked. -->
+Devin Lin — `city_guides` corpus
 
 > **This file is your submission.** Fill it in as you go — most sections get
 > written during the milestone that produces them, not at the end.
@@ -118,10 +118,6 @@ Where can I park for free in Pellew Sands, and how far is it from the seafront?
 You can park for free in the lot behind the station, which is a four-minute walk from the seafront (from guide_pellew_sands.md).
 
 Sources retrieved: guide_accessibility.md, guide_pellew_sands.md
-
-```
-
-```
 
 **My relevance cutoff:**
 
@@ -332,17 +328,25 @@ Yes, but narrowly. Criterion 4 went from 4/5 to 5/5, and across all chunks the o
 
 ## What's Still Broken
 
-<!-- For each criterion still missed after your fix: what you'd do about it,
-     and why you stopped where you did.
+**No criterion is still missed.** All five were MET before and after the fix. Four things are still open:
 
-     "I ran out of time" is fine if it's true. Pretending nothing is left is
-     not.
-
-     Milestone 5. -->
+1. **Marchwood vs. Brightwater hospital contradiction.** The two guides disagree about the nearest hospital. It's a corpus problem, not a pipeline fault. I'd correct the wrong guide, or have the prompt flag conflicting chunks. I stopped because none of my criteria measures it.
+2. **Criteria 1, 2 and 5 were scored by hand.** `scorer.py` doesn't exist, so the scores are my reading and can't be re-run. I'd script criteria 1 and 2 (keyword and `guide_*.md` filename checks) and keep hand-checking 5. I stopped because it wasn't part of the milestones.
+3. **The merged accessibility chunk's retrieval is untested.** None of my test questions touches `guide_accessibility.md`. I'd add a limited-mobility question and check the chunk comes back in the top 5. I stopped because changing the test set between the before and after runs would muddy the comparison.
+4. **The 150-character threshold is tuned to this corpus.** It sits between the fact-free intro (123) and the shortest real one (187). A future short intro that does hold a fact would be merged needlessly. A general fix needs more machinery than one bad chunk justifies.
 
 ## What I'd Do Differently
 
-<!-- Knowing what you know now — which of your five criteria would you write
-     differently, and why?
+**Criterion 4 is the one I'd rewrite.** My sample hit exactly 4 of 5, but checking all 94 chunks showed only one failure (about 99%), so an 80% target on a sample of five told me almost nothing. Next time I'd check every chunk, set the target at 93 of 94 or tighter, and write down my definition of self-contained before scoring.
 
-     Milestone 5. -->
+**Criterion 1 is the second.** A single-word `expects` is too thin for two-part questions. I'd use one keyword per part so a half-answer fails.
+
+**Criteria 2 and 5:** I'd keep them, but name an exact citation format for 2 so a script can check it, and add a question for 5 whose answer needs two chunks. I'd keep criterion 3 as is: the gap between in-corpus (0.207–0.369) and out-of-scope (0.802–0.967) distances made 5 of 5 a fair target.
+
+## How I Used AI — Unit 2
+
+**3.**
+I asked Claude how to fix criterion 4 after my full-corpus check found one defective chunk. It offered a narrow change to `chunker.py::split_documents` or hybrid search, and recommended the chunker fix because the diagnosis pointed at chunking and retrieval distances were already fine. I agreed. I also had it check every guide's intro length before choosing `MIN_INTRO_SIZE = 150`: the accessibility intro is 123 characters and the shortest intro with real facts is 187. That took the corpus from 94 chunks to 93 with nothing else changed.
+
+**4.**
+I used Claude to scan all 94 chunks for ones with no usable fact instead of trusting my sample of five. It found only `guide_accessibility.md#0`, and showed that eleven other chunks under 200 characters still hold a fact. That is what exposed my criterion 4 target as too easy. I read the flagged chunks myself and kept my own definition of self-contained.
